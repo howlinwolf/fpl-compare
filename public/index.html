@@ -835,16 +835,7 @@
             }
           }
 
-          // Color for opponent defensive strength (from attack POV)
-          if (oppDef !== "-") {
-            if (oppDef <= 2) {
-              tdOppDef.classList.add("def-weak");     // weak defence → good
-            } else if (oppDef === 3) {
-              tdOppDef.classList.add("def-medium");
-            } else {
-              tdOppDef.classList.add("def-strong");   // strong defence → bad
-            }
-          }
+
 
           tr.appendChild(tdGw);
           tr.appendChild(tdFixture);
