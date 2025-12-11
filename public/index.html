@@ -145,6 +145,34 @@
       font-size: 0.8rem;
       padding: 4px 6px;
     }
+        /* Color coding for fixture difficulty and opponent defensive strength */
+    .fdr-easy {
+      background-color: #14532d; /* dark green */
+      color: #bbf7d0;            /* light green text */
+    }
+    .fdr-medium {
+      background-color: #78350f; /* dark amber */
+      color: #fed7aa;
+    }
+    .fdr-hard {
+      background-color: #7f1d1d; /* dark red */
+      color: #fecaca;
+    }
+
+    /* Opponent defensive strength: from attacker's POV */
+    .def-weak {
+      background-color: #14532d; /* easier to attack */
+      color: #bbf7d0;
+    }
+    .def-medium {
+      background-color: #374151;
+      color: #e5e7eb;
+    }
+    .def-strong {
+      background-color: #7f1d1d; /* tough defence */
+      color: #fecaca;
+    }
+
   </style>
 </head>
 <body>
@@ -768,7 +796,7 @@
         }
       }
 
-      function fillFixtureTable(data, titleEl, bodyEl) {
+            function fillFixtureTable(data, titleEl, bodyEl) {
         titleEl.textContent = `Upcoming fixtures – ${data.team_name}`;
         bodyEl.innerHTML = "";
 
@@ -785,15 +813,47 @@
           const diff = f.difficulty ?? "-";
           const oppDef = f.opponent_def_strength != null ? f.opponent_def_strength : "-";
 
-          tr.innerHTML = `
-            <td>${gw}</td>
-            <td>${homeAway} vs ${opp}</td>
-            <td>${diff}</td>
-            <td>${oppDef}</td>
-          `;
+          // Create cells manually so we can add classes
+          const tdGw = document.createElement("td");
+          const tdFixture = document.createElement("td");
+          const tdDiff = document.createElement("td");
+          const tdOppDef = document.createElement("td");
+
+          tdGw.textContent = gw;
+          tdFixture.textContent = `${homeAway} vs ${opp}`;
+          tdDiff.textContent = diff;
+          tdOppDef.textContent = oppDef;
+
+          // Color for FDR (1–5)
+          if (diff !== "-") {
+            if (diff <= 2) {
+              tdDiff.classList.add("fdr-easy");
+            } else if (diff === 3) {
+              tdDiff.classList.add("fdr-medium");
+            } else {
+              tdDiff.classList.add("fdr-hard");
+            }
+          }
+
+          // Color for opponent defensive strength (from attack POV)
+          if (oppDef !== "-") {
+            if (oppDef <= 2) {
+              tdOppDef.classList.add("def-weak");     // weak defence → good
+            } else if (oppDef === 3) {
+              tdOppDef.classList.add("def-medium");
+            } else {
+              tdOppDef.classList.add("def-strong");   // strong defence → bad
+            }
+          }
+
+          tr.appendChild(tdGw);
+          tr.appendChild(tdFixture);
+          tr.appendChild(tdDiff);
+          tr.appendChild(tdOppDef);
           bodyEl.appendChild(tr);
         });
       }
+
 
       async function updateComparison() {
         const table = document.getElementById("comparisonTable");
