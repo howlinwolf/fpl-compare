@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>FPL Player Comparison</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #0b172a;
+      color: #f4f4f4;
+    }
+
+    /* Central container to keep layout narrow */
+    .main-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .info {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 0.9em;
+      color: #a0aec0;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .control-column {
+      min-width: 220px;
+    }
+    select {
+      padding: 6px;
+      min-width: 220px;
+      margin-bottom: 8px;
+    }
+    input[type="text"] {
+      padding: 6px;
+      min-width: 220px;
+      margin-bottom: 8px;
+    }
+    label {
+      font-weight: bold;
+    }
+    .subtitle {
+      font-size: 0.85em;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+    .toggles {
+      text-align: center;
+      margin-bottom: 15px;
+      font-size: 0.9em;
+      color: #e5e7eb;
+    }
+    .toggles label {
+      font-weight: normal;
+      margin: 0 10px;
+      cursor: pointer;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      background: #111827;
+    }
+    th, td {
+      border: 1px solid #1f2937;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background: #1f2937;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    tr:nth-child(even) {
+      background: #111827;
+    }
+    tr:nth-child(odd) {
+      background: #020617;
+    }
+    .stat-name {
+      text-align: left;
+      padding-left: 10px;
+    }
+    /* Higher-is-better highlight: green text */
+    .highlight {
+      font-weight: normal;
+      color: #22c55e;
+    }
+    .loader {
+      text-align: center;
+      margin-top: 20px;
+      color: #e5e7eb;
+    }
+    .error {
+      color: #f87171;
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    /* Charts layout */
+    .charts-container {
+      margin-top: 20px;
+    }
+    .chart-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+    }
+    .chart-card {
+      background: #020617;
+      border: 1px solid #1f2937;
+      border-radius: 8px;
+      padding: 10px 12px;
+      flex: 1 1 350px;
+      max-width: 420px;
+    }
+    .chart-card h3 {
+      margin-top: 0;
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+      text-align: center;
+      color: #e5e7eb;
+    }
+    canvas {
+      max-width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="main-container">
+    <h1>FPL Player Comparison (Live Season Stats)</h1>
+    <div class="info">
+      Data from fantasy.premierleague.com – updated via their live game API.
+    </div>
+
+    <!-- SELECTION MODE TOGGLE -->
+    <div class="toggles">
+      <div style="margin-bottom: 6px;">
+        <strong>Selection mode:</strong>
+        <label>
+          <input type="radio" name="selectionMode" value="dropdown" checked />
+          Team/position dropdowns
+        </label>
+        <label>
+          <input type="radio" name="selectionMode" value="search" />
+          Search by name
+        </label>
+      </div>
+    </div>
+
+    <!-- DROPDOWN MODE CONTROLS -->
+    <div id="dropdownModeControls" class="controls">
+      <!-- LEFT SIDE -->
+      <div class="control-column">
+        <div class="subtitle">Left side</div>
+
+        <label for="team1">Team 1:</label><br />
+        <select id="team1">
+          <option value="">All teams</</option>
+        </select>
+        <br />
+
+        <label for="position1">Position 1:</label><br />
+        <select id="position1">
+          <option value="">All positions</option>
+          <option value="GKP">Goalkeeper</option>
+          <option value="DEF">Defender</option>
+          <option value="MID">Midfielder</option>
+          <option value="FWD">Forward</option>
+        </select>
+        <br />
+
+        <label for="player1">Player 1:</label><br />
+        <select id="player1" disabled>
+          <option value="">Select filters first...</option>
+        </select>
+      </div>
+
+      <!-- RIGHT SIDE -->
+      <div class="control-column">
+        <div class="subtitle">Right side</div>
+
+        <label for="team2">Team 2:</label><br />
+        <select id="team2">
+          <option value="">All teams</option>
+        </select>
+        <br />
+
+        <label for="position2">Position 2:</label><br />
+        <select id="position2">
+          <option value="">All positions</option>
+          <option value="GKP">Goalkeeper</option>
+          <option value="DEF">Defender</option>
+          <option value="MID">Midfielder</option>
+          <option value="FWD">Forward</option>
+        </select>
+        <br />
+
+        <label for="player2">Player 2:</label><br />
+        <select id="player2" disabled>
+          <option value="">Select filters first...</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- SEARCH MODE CONTROLS (hidden by default) -->
+    <div id="searchModeControls" class="controls" style="display:none;">
+      <div class="control-column">
+        <div class="subtitle">Left side</div>
+        <label for="search1">Player 1 (search):</label><br />
+        <input id="search1" type="text" list="playersList1" autocomplete="off" placeholder="Type a name..." />
+        <datalist id="playersList1"></datalist>
+      </div>
+
+      <div class="control-column">
+        <div class="subtitle">Right side</div>
+        <label for="search2">Player 2 (search):</label><br />
+        <input id="search2" type="text" list="playersList2" autocomplete="off" placeholder="Type a name..." />
+        <datalist id="playersList2"></datalist>
+      </div>
+    </div>
+
+    <!-- STAT TOGGLES -->
+    <div class="toggles">
+      <label>
+        <input type="checkbox" id="toggleAdvanced" checked />
+        Show advanced xG / xA / xGI / xGC stats
+      </label>
+      <label>
+        <input type="checkbox" id="togglePer90" checked />
+        Show per-90 stats (e.g. xG/90)
+      </label>
+    </div>
+
+    <!-- CHARTS -->
+    <div id="chartsContainer" class="charts-container" style="display:none;">
+      <div class="chart-row">
+        <div class="chart-card">
+          <h3>Attacking output</h3>
+          <canvas id="attackingChart"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Underlying xG stats</h3>
+          <canvas id="xgChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div id="loader" class="loader">Loading players…</div>
+    <div id="error" class="error" style="display:none;"></div>
+
+    <table id="comparisonTable" style="display:none;">
+      <thead>
+        <tr>
+          <th>Stat</th>
+          <th id="p1-header">Player 1</th>
+          <th id="p2-header">Player 2</th>
+        </tr>
+      </thead>
+      <tbody id="statsBody"></tbody>
+    </table>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+      let players = [];
+      let teams = [];
+      let selectionMode = "dropdown"; // "dropdown" or "search"
+
+      let attackingChart = null;
+      let xgChart = null;
+
+      // Human-friendly labels for stats
+      const statLabels = {
+        // Core counting stats
+        minutes: "Minutes Played",
+        total_points: "Total Points",
+        goals_scored: "Goals Scored",
+        assists: "Assists",
+        clean_sheets: "Clean Sheets",
+        goals_conceded: "Goals Conceded",
+        own_goals: "Own Goals",
+        penalties_saved: "Penalties Saved",
+        penalties_missed: "Penalties Missed",
+        yellow_cards: "Yellow Cards",
+        red_cards: "Red Cards",
+        saves: "Saves",
+        bonus: "Bonus Points",
+        bps: "BPS (Bonus Point System)",
+
+        // Underlying FPL indexes
+        influence: "Influence",
+        creativity: "Creativity",
+        threat: "Threat",
+        ict_index: "ICT Index",
+
+        // Fantasy game specific
+        now_cost: "Price (x10, e.g. 55 = £5.5m)",
+        form: "Form (Last 4 GWs)",
+        points_per_game: "Points per Game",
+        selected_by_percent: "Selected by (%)",
+        ep_next: "Expected Points (Next)",
+        ep_this: "Expected Points (This GW)",
+
+        // Expected stats
+        expected_goals: "xG (Expected Goals)",
+        expected_assists: "xA (Expected Assists)",
+        expected_goal_involvements: "xGI (xG + xA)",
+        expected_goals_conceded: "xGC (Expected Goals Conceded)",
+
+        // Per-90 stats (derived)
+        goals_per_90: "Goals per 90",
+        assists_per_90: "Assists per 90",
+        gc_per_90: "Goals Conceded per 90",
+        xg_per_90: "xG per 90",
+        xa_per_90: "xA per 90",
+        xgi_per_90: "xGI per 90",
+        xgc_per_90: "xGC per 90"
+      };
+
+      // Advanced expected stats
+      const advancedStatKeys = [
+        "expected_goals",
+        "expected_assists",
+        "expected_goal_involvements",
+        "expected_goals_conceded"
+      ];
+
+      // Per-90 derived stats
+      const per90StatKeys = [
+        "goals_per_90",
+        "assists_per_90",
+        "gc_per_90",
+        "xg_per_90",
+        "xa_per_90",
+        "xgi_per_90",
+        "xgc_per_90"
+      ];
+
+      // Stats where higher is clearly better (for green highlight)
+      const numericKeysHigherIsBetter = [
+        "total_points", "minutes", "goals_scored", "assists",
+        "clean_sheets", "bonus", "bps", "saves",
+        "influence", "creativity", "threat", "ict_index",
+        "form", "points_per_game",
+        "expected_goals", "expected_assists", "expected_goal_involvements",
+        "goals_per_90", "assists_per_90",
+        "xg_per_90", "xa_per_90", "xgi_per_90"
+      ];
+      // (xGC/xGC per 90 deliberately not here – lower is better.)
+
+      function getPlayerDisplayName(player) {
+        return `${player.web_name} (${player.team} - ${player.position})`;
+      }
+
+      function getStatNumber(player, key) {
+        if (!player || !player.stats) return 0;
+        const raw = player.stats[key];
+        const n = parseFloat(raw);
+        return isNaN(n) ? 0 : n;
+      }
+
+      async function fetchPlayers() {
+        const loader = document.getElementById("loader");
+        const errorDiv = document.getElementById("error");
+
+        loader.style.display = "block";
+        errorDiv.style.display = "none";
+        errorDiv.textContent = "";
+
+        try {
+          const res = await fetch("/api/players");
+          if (!res.ok) {
+            throw new Error("Failed to fetch players");
+          }
+          const data = await res.json();
+          players = data.players || [];
+          teams = data.teams || [];
+
+          // Sort players by team then name
+          players.sort((a, b) => {
+            const teamCompare = a.team.localeCompare(b.team);
+            if (teamCompare !== 0) return teamCompare;
+            return a.web_name.localeCompare(b.web_name);
+          });
+
+          // Sort teams alphabetically
+          teams.sort((a, b) => a.name.localeCompare(b.name));
+
+          // Add derived per-90 stats
+          addDerivedPer90Stats();
+
+          populateTeamDropdowns();
+          setupPositionFilters();
+          populateSearchDatalists();
+          setupSelectionModeToggle();
+
+          // Hook up stat toggles
+          document.getElementById("toggleAdvanced")
+            .addEventListener("change", updateComparison);
+          document.getElementById("togglePer90")
+            .addEventListener("change", updateComparison);
+
+          // Search inputs
+          document.getElementById("search1")
+            .addEventListener("change", updateComparison);
+          document.getElementById("search2")
+            .addEventListener("change", updateComparison);
+        } catch (err) {
+          console.error(err);
+          errorDiv.textContent = "Error loading players. Please try again later.";
+          errorDiv.style.display = "block";
+        } finally {
+          loader.style.display = "none";
+        }
+      }
+
+      function addDerivedPer90Stats() {
+        players.forEach(player => {
+          const s = player.stats || {};
+          const minutes = Number(s.minutes) || 0;
+
+          if (minutes <= 0) {
+            s.goals_per_90 = null;
+            s.assists_per_90 = null;
+            s.gc_per_90 = null;
+            s.xg_per_90 = null;
+            s.xa_per_90 = null;
+            s.xgi_per_90 = null;
+            s.xgc_per_90 = null;
+            return;
+          }
+
+          const factor = 90 / minutes;
+
+          const toNum = (val) => {
+            const n = Number(val);
+            return isNaN(n) ? 0 : n;
+          };
+
+          s.goals_per_90 = (toNum(s.goals_scored) * factor).toFixed(2);
+          s.assists_per_90 = (toNum(s.assists) * factor).toFixed(2);
+          s.gc_per_90 = (toNum(s.goals_conceded) * factor).toFixed(2);
+
+          s.xg_per_90 = (toNum(s.expected_goals) * factor).toFixed(2);
+          s.xa_per_90 = (toNum(s.expected_assists) * factor).toFixed(2);
+          s.xgi_per_90 = (toNum(s.expected_goal_involvements) * factor).toFixed(2);
+          s.xgc_per_90 = (toNum(s.expected_goals_conceded) * factor).toFixed(2);
+        });
+      }
+
+      function populateTeamDropdowns() {
+        const t1 = document.getElementById("team1");
+        const t2 = document.getElementById("team2");
+
+        t1.innerHTML = '<option value="">All teams</option>';
+        t2.innerHTML = '<option value="">All teams</option>';
+
+        teams.forEach(team => {
+          const opt1 = document.createElement("option");
+          opt1.value = team.id;
+          opt1.textContent = team.name;
+
+          const opt2 = document.createElement("option");
+          opt2.value = team.id;
+          opt2.textContent = team.name;
+
+          t1.appendChild(opt1);
+          t2.appendChild(opt2);
+        });
+
+        t1.addEventListener("change", () => {
+          const teamId = t1.value ? Number(t1.value) : null;
+          populatePlayerDropdown("player1", teamId);
+        });
+
+        t2.addEventListener("change", () => {
+          const teamId = t2.value ? Number(t2.value) : null;
+          populatePlayerDropdown("player2", teamId);
+        });
+      }
+
+      function setupPositionFilters() {
+        const pos1 = document.getElementById("position1");
+        const pos2 = document.getElementById("position2");
+
+        pos1.addEventListener("change", () => {
+          const teamId = document.getElementById("team1").value
+            ? Number(document.getElementById("team1").value)
+            : null;
+          populatePlayerDropdown("player1", teamId);
+        });
+
+        pos2.addEventListener("change", () => {
+          const teamId = document.getElementById("team2").value
+            ? Number(document.getElementById("team2").value)
+            : null;
+          populatePlayerDropdown("player2", teamId);
+        });
+      }
+
+      function populatePlayerDropdown(playerSelectId, teamId) {
+        const selectEl = document.getElementById(playerSelectId);
+        const posSelectId = playerSelectId === "player1" ? "position1" : "position2";
+        const posValue = document.getElementById(posSelectId).value;
+
+        selectEl.innerHTML = '<option value="">Select a player...</option>';
+
+        const filteredPlayers = players.filter(p => {
+          const teamMatch = teamId ? p.team_id === teamId : true;
+          const posMatch = posValue ? p.position === posValue : true;
+          return teamMatch && posMatch;
+        });
+
+        filteredPlayers.forEach(player => {
+          const displayName = getPlayerDisplayName(player);
+          const opt = document.createElement("option");
+          opt.value = player.id;
+          opt.textContent = displayName;
+          selectEl.appendChild(opt);
+        });
+
+        selectEl.disabled = filteredPlayers.length === 0;
+
+        if (filteredPlayers.length === 0) {
+          selectEl.innerHTML = '<option value="">No players for this filter</option>';
+        }
+
+        selectEl.addEventListener("change", updateComparison);
+      }
+
+      function populateSearchDatalists() {
+        const list1 = document.getElementById("playersList1");
+        const list2 = document.getElementById("playersList2");
+
+        list1.innerHTML = "";
+        list2.innerHTML = "";
+
+        players.forEach(player => {
+          const displayName = getPlayerDisplayName(player);
+
+          const opt1 = document.createElement("option");
+          opt1.value = displayName;
+          list1.appendChild(opt1);
+
+          const opt2 = document.createElement("option");
+          opt2.value = displayName;
+          list2.appendChild(opt2);
+        });
+      }
+
+      function setupSelectionModeToggle() {
+        const radios = document.querySelectorAll('input[name="selectionMode"]');
+        const dropdownControls = document.getElementById("dropdownModeControls");
+        const searchControls = document.getElementById("searchModeControls");
+
+        radios.forEach(radio => {
+          radio.addEventListener("change", () => {
+            if (!radio.checked) return;
+            selectionMode = radio.value;
+
+            if (selectionMode === "dropdown") {
+              dropdownControls.style.display = "flex";
+              searchControls.style.display = "none";
+            } else {
+              dropdownControls.style.display = "none";
+              searchControls.style.display = "flex";
+            }
+
+            clearSelections();
+            updateComparison();
+          });
+        });
+      }
+
+      function clearSelections() {
+        // Dropdown mode
+        document.getElementById("player1").value = "";
+        document.getElementById("player2").value = "";
+        document.getElementById("team1").value = "";
+        document.getElementById("team2").value = "";
+        document.getElementById("position1").value = "";
+        document.getElementById("position2").value = "";
+
+        // Search mode
+        document.getElementById("search1").value = "";
+        document.getElementById("search2").value = "";
+      }
+
+      function updateCharts(player1, player2) {
+        const container = document.getElementById("chartsContainer");
+
+        if (!player1 || !player2) {
+          container.style.display = "none";
+          if (attackingChart) { attackingChart.destroy(); attackingChart = null; }
+          if (xgChart) { xgChart.destroy(); xgChart = null; }
+          return;
+        }
+
+        const ctxAttack = document.getElementById("attackingChart").getContext("2d");
+        const ctxXg = document.getElementById("xgChart").getContext("2d");
+
+        const p1Label = getPlayerDisplayName(player1);
+        const p2Label = getPlayerDisplayName(player2);
+
+        const attackLabels = ["Goals", "Assists", "Goals/90", "Assists/90"];
+        const attackKeys = ["goals_scored", "assists", "goals_per_90", "assists_per_90"];
+
+        const xgLabels = ["xG", "xA", "xGI", "xG/90", "xA/90", "xGI/90"];
+        const xgKeys = [
+          "expected_goals",
+          "expected_assists",
+          "expected_goal_involvements",
+          "xg_per_90",
+          "xa_per_90",
+          "xgi_per_90"
+        ];
+
+        const p1AttackData = attackKeys.map(k => getStatNumber(player1, k));
+        const p2AttackData = attackKeys.map(k => getStatNumber(player2, k));
+
+        const p1XgData = xgKeys.map(k => getStatNumber(player1, k));
+        const p2XgData = xgKeys.map(k => getStatNumber(player2, k));
+
+        if (attackingChart) attackingChart.destroy();
+        if (xgChart) xgChart.destroy();
+
+        attackingChart = new Chart(ctxAttack, {
+          type: "bar",
+          data: {
+            labels: attackLabels,
+            datasets: [
+              { label: p1Label, data: p1AttackData },
+              { label: p2Label, data: p2AttackData }
+            ]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { position: "bottom" },
+              title: { display: false }
+            },
+            scales: {
+              y: { beginAtZero: true }
+            }
+          }
+        });
+
+        xgChart = new Chart(ctxXg, {
+          type: "bar",
+          data: {
+            labels: xgLabels,
+            datasets: [
+              { label: p1Label, data: p1XgData },
+              { label: p2Label, data: p2XgData }
+            ]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { position: "bottom" },
+              title: { display: false }
+            },
+            scales: {
+              y: { beginAtZero: true }
+            }
+          }
+        });
+
+        container.style.display = "block";
+      }
+
+      function updateComparison() {
+        const table = document.getElementById("comparisonTable");
+        const statsBody = document.getElementById("statsBody");
+        const p1Header = document.getElementById("p1-header");
+        const p2Header = document.getElementById("p2-header");
+
+        const showAdvanced = document.getElementById("toggleAdvanced").checked;
+        const showPer90 = document.getElementById("togglePer90").checked;
+
+        let player1 = null;
+        let player2 = null;
+
+        if (selectionMode === "dropdown") {
+          const p1Id = Number(document.getElementById("player1").value);
+          const p2Id = Number(document.getElementById("player2").value);
+
+          if (!p1Id || !p2Id || p1Id === p2Id) {
+            table.style.display = "none";
+            statsBody.innerHTML = "";
+            updateCharts(null, null);
+            return;
+          }
+
+          player1 = players.find(p => p.id === p1Id);
+          player2 = players.find(p => p.id === p2Id);
+        } else {
+          const search1Val = document.getElementById("search1").value.trim();
+          const search2Val = document.getElementById("search2").value.trim();
+
+          if (!search1Val || !search2Val || search1Val === search2Val) {
+            table.style.display = "none";
+            statsBody.innerHTML = "";
+            updateCharts(null, null);
+            return;
+          }
+
+          player1 = players.find(p => getPlayerDisplayName(p) === search1Val);
+          player2 = players.find(p => getPlayerDisplayName(p) === search2Val);
+
+          if (!player1 || !player2) {
+            table.style.display = "none";
+            statsBody.innerHTML = "";
+            updateCharts(null, null);
+            return;
+          }
+        }
+
+        if (!player1 || !player2) {
+          table.style.display = "none";
+          statsBody.innerHTML = "";
+          updateCharts(null, null);
+          return;
+        }
+
+        p1Header.textContent = getPlayerDisplayName(player1);
+        p2Header.textContent = getPlayerDisplayName(player2);
+
+        // Collect all keys from both players' stats
+        const statKeys = new Set([
+          ...Object.keys(player1.stats || {}),
+          ...Object.keys(player2.stats || {})
+        ]);
+
+        statsBody.innerHTML = "";
+
+        const preferredOrder = [
+          "minutes",
+          "total_points",
+          "now_cost",
+          "form",
+          "points_per_game",
+          "selected_by_percent",
+
+          "goals_scored",
+          "assists",
+          "goals_conceded",
+          "clean_sheets",
+
+          "expected_goals",
+          "expected_assists",
+          "expected_goal_involvements",
+          "expected_goals_conceded",
+
+          "goals_per_90",
+          "assists_per_90",
+          "gc_per_90",
+          "xg_per_90",
+          "xa_per_90",
+          "xgi_per_90",
+          "xgc_per_90",
+
+          "saves",
+          "bonus",
+          "bps",
+
+          "influence",
+          "creativity",
+          "threat",
+          "ict_index",
+
+          "ep_next",
+          "ep_this",
+          "own_goals",
+          "penalties_saved",
+          "penalties_missed",
+          "yellow_cards",
+          "red_cards"
+        ];
+
+        const allKeys = Array.from(statKeys).sort((a, b) => {
+          const ia = preferredOrder.indexOf(a);
+          const ib = preferredOrder.indexOf(b);
+          if (ia === -1 && ib === -1) return a.localeCompare(b);
+          if (ia === -1) return 1;
+          if (ib === -1) return -1;
+          return ia - ib;
+        });
+
+        allKeys.forEach(key => {
+          // Filter according to stat toggles
+          if (advancedStatKeys.includes(key) && !showAdvanced) return;
+          if (per90StatKeys.includes(key) && !showPer90) return;
+
+          const row = document.createElement("tr");
+          const nameCell = document.createElement("td");
+          const p1Cell = document.createElement("td");
+          const p2Cell = document.createElement("td");
+
+          nameCell.textContent = statLabels[key] || key;
+          nameCell.className = "stat-name";
+
+          const v1 = player1.stats ? player1.stats[key] : "";
+          const v2 = player2.stats ? player2.stats[key] : "";
+
+          p1Cell.textContent = v1 === null ? "-" : v1;
+          p2Cell.textContent = v2 === null ? "-" : v2;
+
+          // Green highlight for higher numeric stats
+          if (numericKeysHigherIsBetter.includes(key)) {
+            const num1 = parseFloat(v1);
+            const num2 = parseFloat(v2);
+            if (!isNaN(num1) && !isNaN(num2)) {
+              if (num1 > num2) {
+                p1Cell.classList.add("highlight");
+              } else if (num2 > num1) {
+                p2Cell.classList.add("highlight");
+              }
+            }
+          }
+
+          row.appendChild(nameCell);
+          row.appendChild(p1Cell);
+          row.appendChild(p2Cell);
+          statsBody.appendChild(row);
+        });
+
+        table.style.display = "table";
+        updateCharts(player1, player2);
+      }
+
+      // Start everything
+      fetchPlayers();
+    </script>
+  </div>
+</body>
+</html>
