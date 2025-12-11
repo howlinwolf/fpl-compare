@@ -139,6 +139,12 @@
     canvas {
       max-width: 100%;
     }
+
+    /* Fixtures cards reuse chart-card look */
+    .fixtures-table th, .fixtures-table td {
+      font-size: 0.8rem;
+      padding: 4px 6px;
+    }
   </style>
 </head>
 <body>
@@ -171,7 +177,7 @@
 
         <label for="team1">Team 1:</label><br />
         <select id="team1">
-          <option value="">All teams</</option>
+          <option value="">All teams</option>
         </select>
         <br />
 
@@ -257,6 +263,40 @@
         <div class="chart-card">
           <h3>Underlying xG stats</h3>
           <canvas id="xgChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- FIXTURES -->
+    <div id="fixturesContainer" class="charts-container" style="display:none;">
+      <div class="chart-row">
+        <div class="chart-card">
+          <h3 id="fixtures-team1-title">Upcoming fixtures – Team 1</h3>
+          <table class="fixtures-table">
+            <thead>
+              <tr>
+                <th>GW</th>
+                <th>Fixture</th>
+                <th>FDR</th>
+                <th>Opp Def Str</th>
+              </tr>
+            </thead>
+            <tbody id="fixtures-team1-body"></tbody>
+          </table>
+        </div>
+        <div class="chart-card">
+          <h3 id="fixtures-team2-title">Upcoming fixtures – Team 2</h3>
+          <table class="fixtures-table">
+            <thead>
+              <tr>
+                <th>GW</th>
+                <th>Fixture</th>
+                <th>FDR</th>
+                <th>Opp Def Str</th>
+              </tr>
+            </thead>
+            <tbody id="fixtures-team2-body"></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -686,7 +726,76 @@
         container.style.display = "block";
       }
 
-      function updateComparison() {
+      async function updateFixtures(player1, player2) {
+        const container = document.getElementById("fixturesContainer");
+        const title1 = document.getElementById("fixtures-team1-title");
+        const title2 = document.getElementById("fixtures-team2-title");
+        const body1 = document.getElementById("fixtures-team1-body");
+        const body2 = document.getElementById("fixtures-team2-body");
+
+        // Reset if no players
+        if (!player1 || !player2) {
+          container.style.display = "none";
+          body1.innerHTML = "";
+          body2.innerHTML = "";
+          return;
+        }
+
+        const team1Id = player1.team_id;
+        const team2Id = player2.team_id;
+
+        try {
+          const [res1, res2] = await Promise.all([
+            fetch(`/api/team-fixtures/${team1Id}`),
+            fetch(`/api/team-fixtures/${team2Id}`)
+          ]);
+
+          if (!res1.ok || !res2.ok) {
+            container.style.display = "none";
+            return;
+          }
+
+          const data1 = await res1.json();
+          const data2 = await res2.json();
+
+          fillFixtureTable(data1, title1, body1);
+          fillFixtureTable(data2, title2, body2);
+
+          container.style.display = "block";
+        } catch (err) {
+          console.error("Error fetching fixtures", err);
+          container.style.display = "none";
+        }
+      }
+
+      function fillFixtureTable(data, titleEl, bodyEl) {
+        titleEl.textContent = `Upcoming fixtures – ${data.team_name}`;
+        bodyEl.innerHTML = "";
+
+        if (!data.fixtures || data.fixtures.length === 0) {
+          bodyEl.innerHTML = '<tr><td colspan="4">No upcoming fixtures</td></tr>';
+          return;
+        }
+
+        data.fixtures.forEach(f => {
+          const tr = document.createElement("tr");
+          const gw = f.gw ? `GW${f.gw}` : "-";
+          const homeAway = f.is_home ? "H" : "A";
+          const opp = f.opponent_name || "TBC";
+          const diff = f.difficulty ?? "-";
+          const oppDef = f.opponent_def_strength != null ? f.opponent_def_strength : "-";
+
+          tr.innerHTML = `
+            <td>${gw}</td>
+            <td>${homeAway} vs ${opp}</td>
+            <td>${diff}</td>
+            <td>${oppDef}</td>
+          `;
+          bodyEl.appendChild(tr);
+        });
+      }
+
+      async function updateComparison() {
         const table = document.getElementById("comparisonTable");
         const statsBody = document.getElementById("statsBody");
         const p1Header = document.getElementById("p1-header");
@@ -698,14 +807,19 @@
         let player1 = null;
         let player2 = null;
 
+        const resetViews = async () => {
+          table.style.display = "none";
+          statsBody.innerHTML = "";
+          updateCharts(null, null);
+          await updateFixtures(null, null);
+        };
+
         if (selectionMode === "dropdown") {
           const p1Id = Number(document.getElementById("player1").value);
           const p2Id = Number(document.getElementById("player2").value);
 
           if (!p1Id || !p2Id || p1Id === p2Id) {
-            table.style.display = "none";
-            statsBody.innerHTML = "";
-            updateCharts(null, null);
+            await resetViews();
             return;
           }
 
@@ -716,27 +830,16 @@
           const search2Val = document.getElementById("search2").value.trim();
 
           if (!search1Val || !search2Val || search1Val === search2Val) {
-            table.style.display = "none";
-            statsBody.innerHTML = "";
-            updateCharts(null, null);
+            await resetViews();
             return;
           }
 
           player1 = players.find(p => getPlayerDisplayName(p) === search1Val);
           player2 = players.find(p => getPlayerDisplayName(p) === search2Val);
-
-          if (!player1 || !player2) {
-            table.style.display = "none";
-            statsBody.innerHTML = "";
-            updateCharts(null, null);
-            return;
-          }
         }
 
         if (!player1 || !player2) {
-          table.style.display = "none";
-          statsBody.innerHTML = "";
-          updateCharts(null, null);
+          await resetViews();
           return;
         }
 
@@ -844,6 +947,7 @@
 
         table.style.display = "table";
         updateCharts(player1, player2);
+        await updateFixtures(player1, player2);
       }
 
       // Start everything
